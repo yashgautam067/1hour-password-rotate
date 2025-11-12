@@ -1,0 +1,31 @@
+language: generic
+dist: jammy
+
+jobs:
+  include:
+    - stage: "Password Rotation for 1 Hour"
+      name: "Rotate password every 1 minute and print all at the end"
+
+      script:
+        - echo "--- 🔐 Starting Password Rotation for 1 hour (60 minutes) ---"
+        - passwords=()  # Empty array to store all generated passwords
+        
+        - |
+          for i in $(seq 1 60); do
+            echo "--- ⏳ Minute $i ---"
+            # Generate a secure random password (16 chars)
+            pass=$(openssl rand -base64 12)
+            
+            # Store it in array
+            passwords+=("$pass")
+
+            # Print current one (masked partially)
+            echo "Generated Password (masked): ${pass:0:4}********"
+            
+            # Sleep for 60 seconds before next rotation
+            sleep 60
+          done
+
+        - echo "--- ✅ Password rotation completed ---"
+        - echo "--- 🧾 All Generated Passwords ---"
+        - for p in "${passwords[@]}"; do echo "$p"; done
