@@ -3,29 +3,36 @@ dist: jammy
 
 jobs:
   include:
-    - stage: "Password Rotation for 1 Hour"
-      name: "Rotate password every 1 minute and print all at the end"
+    - stage: "Parallel System Password Rotation"
+      name: "Rotate 10 users' passwords every 5 seconds"
 
       script:
-        - echo "--- 🔐 Starting Password Rotation for 1 hour (60 minutes) ---"
-        - passwords=()  # Empty array to store all generated passwords
-        
+        # create ten users (no password yet)
         - |
-          for i in $(seq 1 60); do
-            echo "--- ⏳ Minute $i ---"
-            # Generate a secure random password (16 chars)
-            pass=$(openssl rand -base64 12)
-            
-            # Store it in array
-            passwords+=("$pass")
-
-            # Print current one (masked partially)
-            echo "Generated Password (masked): ${pass:0:4}********"
-            
-            # Sleep for 60 seconds before next rotation
-            sleep 60
+          echo "--- Creating 10 test users ---"
+          for i in $(seq 1 10); do
+            sudo useradd -m "user$i" || true
+            echo "user$i:InitPass@123" | sudo chpasswd
           done
 
-        - echo "--- ✅ Password rotation completed ---"
-        - echo "--- 🧾 All Generated Passwords ---"
-        - for p in "${passwords[@]}"; do echo "$p"; done
+        # function that keeps changing one user's password
+        - |
+          rotate_pw() {
+            local u=$1
+            local start=$(date +%s)
+            local duration=$((60))    # seconds; change to 3600 for 1 hour
+            while [ $(($(date +%s) - start)) -lt $duration ]; do
+              newpw=$(openssl rand -base64 12)
+              echo "$u:$newpw" | sudo chpasswd
+              sleep 5
+            done
+          }
+
+        # launch 10 parallel rotations
+        - |
+          echo "--- Starting parallel password rotation ---"
+          for i in $(seq 1 10); do
+            rotate_pw "user$i" &
+          done
+          wait
+          echo "--- Rotation period complete ---"
