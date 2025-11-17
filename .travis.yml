@@ -24,4 +24,4 @@ for i in $(seq 1 10); do
 done
 
 wait
-echo "--- Rotation complete Now End #####$$$$$ ---"
+echo "--- Rotation complete Now End ---"
