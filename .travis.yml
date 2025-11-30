@@ -12,6 +12,9 @@ before_install:
   - unzip ngrok-stable-linux-amd64.zip
   - sudo mv ngrok /usr/local/bin/
 
+  # Configure ngrok token (add your token in Travis settings)
+  - ngrok config add-authtoken $NGROK_AUTH_TOKEN
+
 install:
   - pip install flask
 
@@ -57,14 +60,23 @@ script:
   # Start Flask server
   - python3 server.py > server.log 2>&1 &
 
-  # Start ngrok WITHOUT 4040 port
+  # Start ngrok tunnel
   - echo "Starting ngrok..."
-  - ngrok http 5000 --log=stdout > ngrok.log 2>&1 &
-  - sleep 5
+  - nohup ngrok http 5000 --log=stdout > ngrok.log 2>&1 &
 
-  # Extract PUBLIC URL from ngrok logs
-  - echo "=== NGROK PUBLIC URL ==="
-  - cat ngrok.log | grep -Eo "https://[a-z0-9.-]+.ngrok.io" | head -n 1
+  # Wait until ngrok URL appears in logs
+  - |
+    echo "=== Waiting for ngrok URL ==="
+    for i in {1..20}; do
+      URL=$(grep -Eo "https://[a-z0-9.-]+.ngrok.io" ngrok.log | head -n 1)
+      if [ ! -z "$URL" ]; then
+        echo "=== NGROK PUBLIC URL ==="
+        echo $URL
+        break
+      fi
+      echo "Ngrok URL not ready yet ($i)..."
+      sleep 2
+    done
 
-  # Keep pipeline alive
+  # Keep Travis alive
   - while true; do echo "alive"; sleep 10; done
