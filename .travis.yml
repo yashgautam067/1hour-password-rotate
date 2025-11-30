@@ -1,25 +1,68 @@
 dist: focal
-language: bash
+language: python
 
 before_install:
-  - echo "==> Downloading Vault"
+  # Install Vault
   - wget https://releases.hashicorp.com/vault/1.15.0/vault_1.15.0_linux_amd64.zip
   - unzip vault_1.15.0_linux_amd64.zip
   - sudo mv vault /usr/local/bin/
-  - vault --version
+
+  # Install ngrok
+  - wget https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-amd64.zip
+  - unzip ngrok-stable-linux-amd64.zip
+
+install:
+  - pip install flask
 
 before_script:
-  - echo "==> Starting Vault dev server"
+  # Start Vault dev server
   - vault server -dev -dev-root-token-id="root" &
-  - sleep 5   # give time to start
-
-script:
-  - echo "==> Setting VAULT_ADDR"
+  - sleep 5
   - export VAULT_ADDR="http://127.0.0.1:8200"
   - export VAULT_TOKEN="root"
 
-  - echo "==> Writing secret"
-  - vault kv put secret/myapp username="admin" password="12345"
+  # Create simple API server
+  - |
+    cat <<EOF > server.py
+    from flask import Flask, request
+    import subprocess, json
 
-  - echo "==> Reading secret"
-  - vault kv get secret/myapp
+    app = Flask(__name__)
+    SECRET_KEY = "yash123"   # simple auth
+
+    @app.route("/vault/create", methods=["POST"])
+    def create():
+        if request.args.get("auth") != SECRET_KEY:
+            return {"error": "unauthorized"}, 403
+
+        key = request.json.get("key")
+        value = request.json.get("value")
+
+        cmd = ["vault", "kv", "put", "secret/myapp", f"{key}={value}"]
+        out = subprocess.getoutput(" ".join(cmd))
+        return {"status": "created", "output": out}
+
+    @app.route("/vault/read")
+    def read():
+        cmd = ["vault", "kv", "get", "-format=json", "secret/myapp"]
+        out = subprocess.getoutput(" ".join(cmd))
+        return out
+
+    if __name__ == "__main__":
+        app.run(port=5000)
+    EOF
+
+script:
+  # Start Flask API server
+  - python3 server.py &
+
+  # Start ngrok tunnel
+  - ./ngrok http 5000 >/dev/null &
+
+  # Print the public URL
+  - sleep 5
+  - echo "=== NGROK PUBLIC URL ==="
+  - curl http://127.0.0.1:4040/api/tunnels
+
+  # Keep Travis alive for 2 hours
+  - while true; do echo "alive"; sleep 5; done
