@@ -1,27 +1,4 @@
-#!/bin/bash
+language: bash
 
-# --- Create test users ---
-for i in $(seq 1 10); do
-  sudo useradd -m "user$i" 2>/dev/null || true
-  echo "user$i:InitPass@123" | sudo chpasswd
-done
-
-# --- Define password rotation function ---
-rotate_pw() {
-  local u=$1
-  local end=$((SECONDS + 60))   # run 1 minute (set 3600 for 1 hour)
-  while [ $SECONDS -lt $end ]; do
-    newpw=$(openssl rand -base64 12)
-    echo "$u:$newpw" | sudo chpasswd
-    echo "[$(date +%H:%M:%S)] Rotated $u"
-    sleep 5
-  done
-}
-
-# --- Run 10 parallel rotations ---
-for i in $(seq 1 10); do
-  rotate_pw "user$i" &
-done
-
-wait
-echo "--- Rotation complete Now End ---"
+script:
+  - echo "Hello"
