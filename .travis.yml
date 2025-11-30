@@ -22,7 +22,7 @@ before_script:
   - export VAULT_ADDR="http://127.0.0.1:8200"
   - export VAULT_TOKEN="root"
 
-  # Create API server
+  # Create simple Flask API
   - |
     cat <<EOF > server.py
     from flask import Flask, request
@@ -54,28 +54,17 @@ before_script:
     EOF
 
 script:
-  # Start API server
+  # Start Flask server
   - python3 server.py > server.log 2>&1 &
 
-  # Start ngrok tunnel (background)
+  # Start ngrok WITHOUT 4040 port
   - echo "Starting ngrok..."
-  - nohup ngrok http 5000 > ngrok.log 2>&1 &
+  - ngrok http 5000 --log=stdout > ngrok.log 2>&1 &
+  - sleep 5
 
-  # Wait for ngrok to be ready
-  - |
-    echo "Waiting for ngrok..."
-    for i in {1..20}; do
-      if curl -s http://127.0.0.1:4040/api/tunnels >/dev/null; then
-        echo "Ngrok is ready!"
-        break
-      fi
-      echo "Not ready yet ($i)"
-      sleep 2
-    done
-
-  # Print ngrok public URL
+  # Extract PUBLIC URL from ngrok logs
   - echo "=== NGROK PUBLIC URL ==="
-  - curl -s http://127.0.0.1:4040/api/tunnels | sed 's/.*public_url":"//;s/".*//'
+  - cat ngrok.log | grep -Eo "https://[a-z0-9.-]+.ngrok.io" | head -n 1
 
-  # Keep Travis alive
+  # Keep pipeline alive
   - while true; do echo "alive"; sleep 10; done
