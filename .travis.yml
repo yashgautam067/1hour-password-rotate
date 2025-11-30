@@ -1,4 +1,25 @@
+dist: focal
 language: bash
 
+before_install:
+  - echo "==> Downloading Vault"
+  - wget https://releases.hashicorp.com/vault/1.15.0/vault_1.15.0_linux_amd64.zip
+  - unzip vault_1.15.0_linux_amd64.zip
+  - sudo mv vault /usr/local/bin/
+  - vault --version
+
+before_script:
+  - echo "==> Starting Vault dev server"
+  - vault server -dev -dev-root-token-id="root" &
+  - sleep 5   # give time to start
+
 script:
-  - echo "Hello"
+  - echo "==> Setting VAULT_ADDR"
+  - export VAULT_ADDR="http://127.0.0.1:8200"
+  - export VAULT_TOKEN="root"
+
+  - echo "==> Writing secret"
+  - vault kv put secret/myapp username="admin" password="12345"
+
+  - echo "==> Reading secret"
+  - vault kv get secret/myapp
