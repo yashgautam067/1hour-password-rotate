@@ -10,25 +10,26 @@ before_install:
   # Install ngrok
   - wget https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-amd64.zip
   - unzip ngrok-stable-linux-amd64.zip
+  - sudo mv ngrok /usr/local/bin/
 
 install:
   - pip install flask
 
 before_script:
   # Start Vault dev server
-  - vault server -dev -dev-root-token-id="root" &
+  - vault server -dev -dev-root-token-id="root" > vault.log 2>&1 &
   - sleep 5
   - export VAULT_ADDR="http://127.0.0.1:8200"
   - export VAULT_TOKEN="root"
 
-  # Create simple API server
+  # Create API server
   - |
     cat <<EOF > server.py
     from flask import Flask, request
     import subprocess, json
 
     app = Flask(__name__)
-    SECRET_KEY = "yash123"   # simple auth
+    SECRET_KEY = "yash123"
 
     @app.route("/vault/create", methods=["POST"])
     def create():
@@ -53,16 +54,28 @@ before_script:
     EOF
 
 script:
-  # Start Flask API server
-  - python3 server.py &
+  # Start API server
+  - python3 server.py > server.log 2>&1 &
 
-  # Start ngrok tunnel
-  - ./ngrok http 5000 >/dev/null &
+  # Start ngrok tunnel (background)
+  - echo "Starting ngrok..."
+  - nohup ngrok http 5000 > ngrok.log 2>&1 &
 
-  # Print the public URL
-  - sleep 5
+  # Wait for ngrok to be ready
+  - |
+    echo "Waiting for ngrok..."
+    for i in {1..20}; do
+      if curl -s http://127.0.0.1:4040/api/tunnels >/dev/null; then
+        echo "Ngrok is ready!"
+        break
+      fi
+      echo "Not ready yet ($i)"
+      sleep 2
+    done
+
+  # Print ngrok public URL
   - echo "=== NGROK PUBLIC URL ==="
-  - curl http://127.0.0.1:4040/api/tunnels
+  - curl -s http://127.0.0.1:4040/api/tunnels | sed 's/.*public_url":"//;s/".*//'
 
-  # Keep Travis alive for 2 hours
-  - while true; do echo "alive"; sleep 5; done
+  # Keep Travis alive
+  - while true; do echo "alive"; sleep 10; done
