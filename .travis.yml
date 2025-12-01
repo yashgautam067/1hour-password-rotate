@@ -1,2 +1,27 @@
-language:bash
-echo "hello yash"
+language: minimal
+os: linux
+dist: bionic
+
+env:
+  global:
+    - CI=true
+
+before_install:
+  - echo "Preparing build environment..."
+
+install:
+  - echo "No dependencies to install"
+
+script:
+  - echo "hello yash"
+  # Replace the line above with your project's test/build command, for example:
+  # - pytest              # for Python projects
+  # - npm ci && npm test  # for Node.js projects
+  # - go test ./...       # for Go projects
+
+cache:
+  directories:
+    - $HOME/.cache
+
+notifications:
+  email: false
