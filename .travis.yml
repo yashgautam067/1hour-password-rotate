@@ -13,11 +13,10 @@ install:
   - echo "No dependencies to install"
 
 script:
-  - echo "hello yash"
-  # Replace the line above with your project's test/build command, for example:
-  # - pytest              # for Python projects
-  # - npm ci && npm test  # for Node.js projects
-  # - go test ./...       # for Go projects
+  - mkdir yash
+  - cd yash
+  - echo "hello yash" > yash.txt
+ 
 
 cache:
   directories:
