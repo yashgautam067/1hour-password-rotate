@@ -13,9 +13,7 @@ install:
   - echo "No dependencies to install"
 
 script:
-  - mkdir yash
-  - cd yash
-  - echo "hello yash" > yash.txt
+  - echo "hello yash"
  
 
 cache:
